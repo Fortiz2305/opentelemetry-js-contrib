@@ -101,6 +101,13 @@ export class AwsInstrumentation extends InstrumentationBase<any> {
       this.patchV3ConstructStack.bind(this),
       this.unpatchV3ConstructStack.bind(this)
     );
+    const v3NewMiddlewareStackFileNewVersions = new InstrumentationNodeModuleFile(
+      '@smithy/middleware-stack/dist-cjs/MiddlewareStack.js',
+      ['^1.0.2'],
+      this.patchV3ConstructStack.bind(this),
+      this.unpatchV3ConstructStack.bind(this)
+    );
+
 
     // as for aws-sdk v3.13.1, constructStack is exported from @aws-sdk/middleware-stack as
     // getter instead of function, which fails shimmer.
@@ -111,10 +118,23 @@ export class AwsInstrumentation extends InstrumentationBase<any> {
       v3MiddlewareStackFileOldVersions,
       v3MiddlewareStackFileNewVersions,
     ]);
+    const v3SmithyMiddlewareStack = new InstrumentationNodeModuleDefinition<typeof AWS>(
+      '@smithy/middleware-stack',
+      ['^1.0.2'],
+      undefined,
+      undefined,
+      [v3NewMiddlewareStackFileNewVersions]
+    );
 
     const v3SmithyClient = new InstrumentationNodeModuleDefinition<typeof AWS>(
       '@aws-sdk/smithy-client',
       ['^3.1.0'],
+      this.patchV3SmithyClient.bind(this),
+      this.unpatchV3SmithyClient.bind(this)
+    );
+    const v3SmithyScopedClient = new InstrumentationNodeModuleDefinition<typeof AWS>(
+      '@smithy/smithy-client',
+      ['^1.0.2'],
       this.patchV3SmithyClient.bind(this),
       this.unpatchV3SmithyClient.bind(this)
     );
@@ -134,7 +154,7 @@ export class AwsInstrumentation extends InstrumentationBase<any> {
       [v2Request]
     );
 
-    return [v2Module, v3MiddlewareStack, v3SmithyClient];
+    return [v2Module, v3MiddlewareStack, v3SmithyMiddlewareStack, v3SmithyClient, v3SmithyScopedClient];
   }
 
   protected patchV3ConstructStack(moduleExports: any, moduleVersion?: string) {
